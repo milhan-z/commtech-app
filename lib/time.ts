@@ -69,19 +69,24 @@ export interface WeekDay {
   isToday: boolean;
 }
 
-export function getWeekDays(timeZone = DEFAULT_TZ): WeekDay[] {
+// weekOffset: 0 = current week window, -1 = previous week, +1 = next week
+export function getWeekDays(timeZone = DEFAULT_TZ, weekOffset = 0): WeekDay[] {
   const now = new Date();
-  // Get today's date string in the target timezone
-  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone }).format(now); // YYYY-MM-DD
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone }).format(now);
 
   const days: WeekDay[] = [];
+  const centerOffset = weekOffset * 7; // shift center day by N weeks
   for (let offset = -3; offset <= 3; offset++) {
     const d = new Date(now);
-    d.setDate(d.getDate() + offset);
+    d.setDate(d.getDate() + centerOffset + offset);
     const dayShort = new Intl.DateTimeFormat("id-ID", { timeZone, weekday: "short" }).format(d);
     const dayNum = Number(new Intl.DateTimeFormat("en-CA", { timeZone, day: "numeric" }).format(d));
     const dateStr = new Intl.DateTimeFormat("en-CA", { timeZone }).format(d);
     days.push({ date: d, dayShort, dayNum, isToday: dateStr === todayStr });
   }
   return days;
+}
+
+export function formatMonthYear(date: Date, timeZone = DEFAULT_TZ): string {
+  return new Intl.DateTimeFormat("id-ID", { timeZone, month: "long", year: "numeric" }).format(date);
 }
