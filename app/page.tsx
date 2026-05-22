@@ -84,18 +84,26 @@ export default function HomePage() {
     const response = await fetch(`/api/rundown${query}`, { cache: "no-store" });
     const data = (await response.json()) as RundownPayload;
     setPayload(data);
+    // Auto-select the current/first event date so filter is immediately in sync
+    if (!selectedDate) {
+      const autoDate = data.current?.date || data.events[0]?.date;
+      if (autoDate) setSelectedDate(autoDate);
+    }
     setLoading(false);
     setRefreshing(false);
   }
 
   useEffect(() => {
     loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const current = payload?.current;
   const status: EventStatus = current ? compareEventToNow(current.date, current.startTime, current.endTime, now) : "done";
-  // Use selected date from strip, else fall back to current event's date
-  const activeDate = selectedDate || current?.date || payload?.events[0]?.date;
+  // The first event date — used to auto-center WeekStrip
+  const firstEventDate = current?.date || payload?.events[0]?.date;
+  // Active date drives the filter: explicit selection wins, else first event date
+  const activeDate = selectedDate || firstEventDate;
   const todayEvents = useMemo(() => {
     const list = (payload?.events || []).filter((event) => event.date === activeDate);
     if (filter === "Tugasku") return list.filter((event) => includesPerson(event, selectedName));
@@ -107,9 +115,17 @@ export default function HomePage() {
   const activeChild = current?.children.find((child) => compareEventToNow(child.date, child.startTime, child.endTime, now) === "live");
   const visibleEvents = expandedToday ? todayEvents : todayEvents.slice(0, 5);
 
+  const pageTitle = activeDate && activeDate !== todayStr
+    ? new Date(activeDate + "T00:00:00").toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })
+    : "Hari ini";
+
   return (
-    <AppShell title={selectedDate && selectedDate !== todayStr ? `Tanggal ${new Date(selectedDate + "T00:00:00").toLocaleDateString("id-ID", { day: "numeric", month: "long" })}` : "Hari ini"} onRefresh={() => loadData(true)} refreshing={refreshing}>
-      <WeekStrip selectedDate={selectedDate ?? todayStr} onSelect={setSelectedDate} />
+    <AppShell title={pageTitle} onRefresh={() => loadData(true)} refreshing={refreshing}>
+      <WeekStrip
+        selectedDate={selectedDate}
+        centerDate={firstEventDate}
+        onSelect={setSelectedDate}
+      />
       {loading ? (
         <div className="space-y-4">
           <div className="h-72 animate-pulse rounded-[2.5rem] bg-white/70" />

@@ -1,20 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { formatMonthYear, getWeekDays } from "@/lib/time";
+import { formatMonthYear, getWeekDays, getWeekOffsetForDate } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 interface WeekStripProps {
-  selectedDate?: string; // "YYYY-MM-DD"
+  /** Currently selected date as "YYYY-MM-DD" */
+  selectedDate?: string;
+  /** Auto-navigate the strip to this date's week (e.g. first event date from API) */
+  centerDate?: string;
   onSelect?: (date: string) => void;
 }
 
-export function WeekStrip({ selectedDate, onSelect }: WeekStripProps) {
+export function WeekStrip({ selectedDate, centerDate, onSelect }: WeekStripProps) {
   const [weekOffset, setWeekOffset] = useState(0);
-  const days = getWeekDays(undefined, weekOffset);
 
-  const centerDay = days[3]; // middle of the 7-day window
+  // Auto-navigate to the week containing centerDate when it first arrives
+  useEffect(() => {
+    if (centerDate) {
+      setWeekOffset(getWeekOffsetForDate(centerDate));
+    }
+  }, [centerDate]);
+
+  const days = getWeekDays(undefined, weekOffset);
+  const centerDay = days[3];
   const monthLabel = formatMonthYear(centerDay.date);
 
   return (
@@ -64,10 +74,7 @@ export function WeekStrip({ selectedDate, onSelect }: WeekStripProps) {
             <button
               key={dateStr}
               type="button"
-              onClick={() => {
-                onSelect?.(dateStr);
-                // Jump back to this week if navigated away
-              }}
+              onClick={() => onSelect?.(dateStr)}
               className="flex flex-1 flex-col items-center gap-1 focus:outline-none"
             >
               <span

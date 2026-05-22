@@ -35,15 +35,22 @@ export default function ChecklistPage() {
     refresh ? setRefreshing(true) : setLoading(true);
     const response = await fetch("/api/checklist", { cache: "no-store" });
     const data = await response.json();
-    setItems(data.items || []);
+    const loadedItems: ChecklistItem[] = data.items || [];
+    setItems(loadedItems);
     setCanWrite(Boolean(data.canWrite && data.source === "google"));
     setSource(data.source);
+    // Auto-select first item's date if none selected yet
+    if (!selectedDate) {
+      const firstDate = loadedItems.find((i) => i.date)?.date;
+      if (firstDate) setSelectedDate(firstDate);
+    }
     setLoading(false);
     setRefreshing(false);
   }
 
   useEffect(() => {
     loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = useMemo(() => {
@@ -79,7 +86,11 @@ export default function ChecklistPage() {
 
   return (
     <AppShell title="Persiapan" onRefresh={() => loadData(true)} refreshing={refreshing}>
-      <WeekStrip selectedDate={selectedDate ?? todayStr} onSelect={setSelectedDate} />
+      <WeekStrip
+        selectedDate={selectedDate}
+        centerDate={items.find((i) => i.date)?.date}
+        onSelect={setSelectedDate}
+      />
       <div className="space-y-6">
         <OrganicCard className="p-6">
           <div className="flex items-end justify-between">

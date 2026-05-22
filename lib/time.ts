@@ -90,3 +90,11 @@ export function getWeekDays(timeZone = DEFAULT_TZ, weekOffset = 0): WeekDay[] {
 export function formatMonthYear(date: Date, timeZone = DEFAULT_TZ): string {
   return new Intl.DateTimeFormat("id-ID", { timeZone, month: "long", year: "numeric" }).format(date);
 }
+
+/** Returns the weekOffset needed so that WeekStrip centers near the given YYYY-MM-DD date */
+export function getWeekOffsetForDate(dateStr: string): number {
+  const now = new Date();
+  const target = new Date(dateStr + "T12:00:00");
+  const diffDays = Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.round(diffDays / 7);
+}
