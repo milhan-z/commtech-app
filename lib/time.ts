@@ -61,3 +61,27 @@ export function compareEventToNow(date: string | undefined, start?: string, end?
   if (now > endDate) return "done" as const;
   return "upcoming" as const;
 }
+
+export interface WeekDay {
+  date: Date;
+  dayShort: string; // "Sen"
+  dayNum: number;   // 22
+  isToday: boolean;
+}
+
+export function getWeekDays(timeZone = DEFAULT_TZ): WeekDay[] {
+  const now = new Date();
+  // Get today's date string in the target timezone
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone }).format(now); // YYYY-MM-DD
+
+  const days: WeekDay[] = [];
+  for (let offset = -3; offset <= 3; offset++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + offset);
+    const dayShort = new Intl.DateTimeFormat("id-ID", { timeZone, weekday: "short" }).format(d);
+    const dayNum = Number(new Intl.DateTimeFormat("en-CA", { timeZone, day: "numeric" }).format(d));
+    const dateStr = new Intl.DateTimeFormat("en-CA", { timeZone }).format(d);
+    days.push({ date: d, dayShort, dayNum, isToday: dateStr === todayStr });
+  }
+  return days;
+}
