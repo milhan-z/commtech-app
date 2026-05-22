@@ -5,6 +5,7 @@ import { Check, Circle, Clock3 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { OrganicCard } from "@/components/OrganicCard";
 import { SegmentedTabs } from "@/components/SegmentedTabs";
+import { WeekStrip } from "@/components/WeekStrip";
 import type { ChecklistItem, ChecklistStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,11 @@ export default function ChecklistPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [canWrite, setCanWrite] = useState(false);
   const [source, setSource] = useState<"google" | "mock">("mock");
+  const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
+
+  const todayStr = typeof window !== "undefined"
+    ? new Date().toLocaleDateString("en-CA")
+    : undefined;
 
   async function loadData(refresh = false) {
     refresh ? setRefreshing(true) : setLoading(true);
@@ -40,7 +46,14 @@ export default function ChecklistPage() {
     loadData();
   }, []);
 
-  const filtered = useMemo(() => (filter === "Semua" ? items : items.filter((item) => item.status === filter)), [filter, items]);
+  const filtered = useMemo(() => {
+    let list = filter === "Semua" ? items : items.filter((item) => item.status === filter);
+    // Filter by selected date if item has a date field
+    if (selectedDate) {
+      list = list.filter((item) => !item.date || item.date === selectedDate);
+    }
+    return list;
+  }, [filter, items, selectedDate]);
   const grouped = useMemo(() => {
     return filtered.reduce<Record<string, ChecklistItem[]>>((acc, item) => {
       const key = item.category || "Lainnya";
@@ -65,7 +78,8 @@ export default function ChecklistPage() {
   }
 
   return (
-    <AppShell title="Persiapan Hari Ini" onRefresh={() => loadData(true)} refreshing={refreshing}>
+    <AppShell title="Persiapan" onRefresh={() => loadData(true)} refreshing={refreshing}>
+      <WeekStrip selectedDate={selectedDate ?? todayStr} onSelect={setSelectedDate} />
       <div className="space-y-6">
         <OrganicCard className="p-6">
           <div className="flex items-end justify-between">

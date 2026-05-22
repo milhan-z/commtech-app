@@ -2,7 +2,6 @@
 
 import { RefreshCw } from "lucide-react";
 import { BottomNav } from "@/components/BottomNav";
-import { WeekStrip } from "@/components/WeekStrip";
 import { formatDatePill } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +48,6 @@ export function AppShell({
           ) : null}
         </div>
       </header>
-      <WeekStrip />
       {title ? <h1 className="mb-6 font-serif text-5xl leading-[0.95] tracking-normal">{title}</h1> : null}
       {children}
       <BottomNav />

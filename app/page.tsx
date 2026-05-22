@@ -9,6 +9,7 @@ import { OrganicCard } from "@/components/OrganicCard";
 import { SegmentedTabs } from "@/components/SegmentedTabs";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TimelineCard } from "@/components/TimelineCard";
+import { WeekStrip } from "@/components/WeekStrip";
 import { compareEventToNow, getNowFromParam } from "@/lib/time";
 import type { EventStatus, RundownEvent, RundownPayload } from "@/types";
 
@@ -68,6 +69,11 @@ export default function HomePage() {
   const [filter, setFilter] = useState<Filter>("Semua");
   const [selectedName, setSelectedName] = useState("");
   const [expandedToday, setExpandedToday] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
+
+  const todayStr = typeof window !== "undefined"
+    ? new Date().toLocaleDateString("en-CA")
+    : undefined;
 
   const nowParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("now") : null;
   const now = getNowFromParam(nowParam);
@@ -88,20 +94,22 @@ export default function HomePage() {
 
   const current = payload?.current;
   const status: EventStatus = current ? compareEventToNow(current.date, current.startTime, current.endTime, now) : "done";
-  const currentDate = current?.date || payload?.events[0]?.date;
+  // Use selected date from strip, else fall back to current event's date
+  const activeDate = selectedDate || current?.date || payload?.events[0]?.date;
   const todayEvents = useMemo(() => {
-    const list = (payload?.events || []).filter((event) => event.date === currentDate);
+    const list = (payload?.events || []).filter((event) => event.date === activeDate);
     if (filter === "Tugasku") return list.filter((event) => includesPerson(event, selectedName));
     if (filter === "Lokasi") return list.filter((event) => event.location);
     if (filter === "PIC") return list.filter((event) => event.pic);
     return list;
-  }, [payload, currentDate, filter, selectedName]);
+  }, [payload, activeDate, filter, selectedName]);
 
   const activeChild = current?.children.find((child) => compareEventToNow(child.date, child.startTime, child.endTime, now) === "live");
   const visibleEvents = expandedToday ? todayEvents : todayEvents.slice(0, 5);
 
   return (
-    <AppShell title="Hari ini" onRefresh={() => loadData(true)} refreshing={refreshing}>
+    <AppShell title={selectedDate && selectedDate !== todayStr ? `Tanggal ${new Date(selectedDate + "T00:00:00").toLocaleDateString("id-ID", { day: "numeric", month: "long" })}` : "Hari ini"} onRefresh={() => loadData(true)} refreshing={refreshing}>
+      <WeekStrip selectedDate={selectedDate ?? todayStr} onSelect={setSelectedDate} />
       {loading ? (
         <div className="space-y-4">
           <div className="h-72 animate-pulse rounded-[2.5rem] bg-white/70" />
