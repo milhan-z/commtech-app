@@ -12,6 +12,10 @@ export function middleware(request: NextRequest) {
     path.includes(".");
 
   if (hasPin && !isAuthed && !isPublic) {
+    if (path.startsWith("/api/")) {
+      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    }
+
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", path);
     return NextResponse.redirect(loginUrl);

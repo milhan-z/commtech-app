@@ -64,6 +64,29 @@ function hasJob(row: SheetRow): boolean {
   return Boolean(text(row[7]) || text(row[8]) || text(row[9]) || text(row[10]));
 }
 
+function timeToMinutes(time?: string): number | undefined {
+  if (!time) return undefined;
+  const [hours, minutes] = time.split(":").map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return undefined;
+  return hours * 60 + minutes;
+}
+
+function shouldStartParent(row: SheetRow, startTime?: string, endTime?: string, durationMinutes?: number): boolean {
+  return Boolean(startTime && endTime && text(row[3]) && !hasJob(row) && durationMinutes && durationMinutes >= 45);
+}
+
+function belongsToParent(parent: RundownEvent | undefined, event: RundownEvent): parent is RundownEvent {
+  if (!parent || !parent.date || parent.date !== event.date || !event.startTime) return false;
+  const eventStart = timeToMinutes(event.startTime);
+  const parentStart = timeToMinutes(parent.startTime);
+  const parentEnd = timeToMinutes(parent.endTime);
+  if (eventStart === undefined || parentStart === undefined || parentEnd === undefined) return false;
+
+  const startsNearParent = eventStart >= parentStart - 45;
+  const startsBeforeParentEnds = eventStart < parentEnd;
+  return startsNearParent && startsBeforeParentEnds && event.id !== parent.id;
+}
+
 function makeJob(row: SheetRow, eventId: string, index: number): JobAssignment | null {
   const job = text(row[7]);
   const volunteer = text(row[8]);
@@ -87,7 +110,7 @@ export function parseRundownRows(rows: SheetRow[]): RundownEvent[] {
   let currentDay = "CommTECH Insight 2026";
   let currentDate: string | undefined;
   let lastEvent: RundownEvent | undefined;
-  let parentEvent: RundownEvent | undefined;
+  let activeParent: RundownEvent | undefined;
 
   rows.forEach((row, rowIndex) => {
     const firstCell = text(row[0]);
@@ -98,7 +121,7 @@ export function parseRundownRows(rows: SheetRow[]): RundownEvent[] {
       currentDay = day.label;
       currentDate = day.date;
       lastEvent = undefined;
-      parentEvent = undefined;
+      activeParent = undefined;
       return;
     }
 
@@ -114,6 +137,18 @@ export function parseRundownRows(rows: SheetRow[]): RundownEvent[] {
     const durationMinutes = Number(row[2]) || minutesBetween(startTime, endTime);
 
     if ((startTime || endTime || agenda) && agenda) {
+      const eventStartMinutes = timeToMinutes(startTime);
+      const activeParentEndMinutes = timeToMinutes(activeParent?.endTime);
+      if (
+        activeParent &&
+        (activeParent.date !== currentDate ||
+          (eventStartMinutes !== undefined &&
+            activeParentEndMinutes !== undefined &&
+            eventStartMinutes >= activeParentEndMinutes))
+      ) {
+        activeParent = undefined;
+      }
+
       const id = `rd-${rowIndex + 1}`;
       const event: RundownEvent = {
         id,
@@ -124,8 +159,8 @@ export function parseRundownRows(rows: SheetRow[]): RundownEvent[] {
         durationMinutes,
         agenda,
         speaker,
-        location: location || parentEvent?.location,
-        pic: pic || parentEvent?.pic,
+        location: location || activeParent?.location,
+        pic: pic || activeParent?.pic,
         notes,
         jobs: [],
         children: []
@@ -134,19 +169,18 @@ export function parseRundownRows(rows: SheetRow[]): RundownEvent[] {
       const job = makeJob(row, id, 0);
       if (job) event.jobs.push(job);
 
-      const isChild = Boolean(parentEvent && event.startTime && parentEvent.startTime && event.date === parentEvent.date);
-      if (isChild && parentEvent && event.agenda !== parentEvent.agenda) {
-        parentEvent.isParent = true;
-        parentEvent.children.push(event);
+      if (belongsToParent(activeParent, event) && event.agenda !== activeParent.agenda) {
+        activeParent.isParent = true;
+        activeParent.children.push(event);
       }
 
       events.push(event);
       lastEvent = event;
 
-      if (startTime && endTime && agenda && (!row[7] || row[7] === "") && durationMinutes && durationMinutes >= 60) {
-        parentEvent = event;
-      } else if (startTime && endTime && !parentEvent?.isParent) {
-        parentEvent = event;
+      if (shouldStartParent(row, startTime, endTime, durationMinutes)) {
+        activeParent = event;
+      } else if (activeParent && !belongsToParent(activeParent, event)) {
+        activeParent = undefined;
       }
       return;
     }

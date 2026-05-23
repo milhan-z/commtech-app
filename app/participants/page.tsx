@@ -25,13 +25,18 @@ export default function ParticipantsPage() {
 
   async function loadData(refresh = false) {
     refresh ? setRefreshing(true) : setLoading(true);
-    const response = await fetch("/api/participants", { cache: "no-store" });
-    if (response.ok) {
+    try {
+      const response = await fetch("/api/participants", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Participants API returned ${response.status}`);
       const data = await response.json();
       setParticipants(data.participants || []);
+    } catch (error) {
+      console.error(error);
+      setParticipants([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    setLoading(false);
-    setRefreshing(false);
   }
 
   useEffect(() => {

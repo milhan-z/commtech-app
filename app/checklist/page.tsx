@@ -33,19 +33,27 @@ export default function ChecklistPage() {
 
   async function loadData(refresh = false) {
     refresh ? setRefreshing(true) : setLoading(true);
-    const response = await fetch("/api/checklist", { cache: "no-store" });
-    const data = await response.json();
-    const loadedItems: ChecklistItem[] = data.items || [];
-    setItems(loadedItems);
-    setCanWrite(Boolean(data.canWrite && data.source === "google"));
-    setSource(data.source);
-    // Auto-select first item's date if none selected yet
-    if (!selectedDate) {
-      const firstDate = loadedItems.find((i) => i.date)?.date;
-      if (firstDate) setSelectedDate(firstDate);
+    try {
+      const response = await fetch("/api/checklist", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Checklist API returned ${response.status}`);
+      const data = await response.json();
+      const loadedItems: ChecklistItem[] = data.items || [];
+      setItems(loadedItems);
+      setCanWrite(Boolean(data.canWrite && data.source === "google"));
+      setSource(data.source || "mock");
+      if (!selectedDate) {
+        const firstDate = loadedItems.find((i) => i.date)?.date;
+        if (firstDate) setSelectedDate(firstDate);
+      }
+    } catch (error) {
+      console.error(error);
+      setItems([]);
+      setCanWrite(false);
+      setSource("mock");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    setLoading(false);
-    setRefreshing(false);
   }
 
   useEffect(() => {

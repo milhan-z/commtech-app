@@ -13,14 +13,28 @@ export async function GET() {
     return NextResponse.json({ participants: [], protected: true, source: "mock", refreshedAt: new Date().toISOString() }, { status: 401 });
   }
 
-  const rows = await getSheetRows("List Peserta", "A:Z");
-  const participants = rows?.length ? parseParticipants(rows) : mockParticipants;
+  let rows = null;
+  let participants = mockParticipants;
+  let source: "google" | "mock" = "mock";
+  let error: string | undefined;
+
+  try {
+    rows = await getSheetRows("List Peserta", "A:Z");
+    if (rows?.length) {
+      participants = parseParticipants(rows);
+      source = "google";
+    }
+  } catch (caught) {
+    console.error("Failed to build participants payload, falling back to mock data.", caught);
+    error = "Data peserta Google Sheets belum bisa dibaca. App memakai mock data sementara.";
+  }
 
   return NextResponse.json(
     {
       participants,
       protected: Boolean(process.env.STAFF_PIN),
-      source: rows?.length ? "google" : "mock",
+      source,
+      error,
       refreshedAt: new Date().toISOString()
     },
     {

@@ -37,7 +37,8 @@ export function toJakartaDateTime(date: string | undefined, time: string | undef
 
 export function getNowFromParam(now?: string | null): Date {
   if (now) {
-    const parsed = new Date(now);
+    const normalized = now.includes(" ") ? now.replace(" ", "+") : now;
+    const parsed = new Date(normalized);
     if (!Number.isNaN(parsed.getTime())) return parsed;
   }
   return new Date();
@@ -70,14 +71,13 @@ export interface WeekDay {
 }
 
 // weekOffset: 0 = current week window, -1 = previous week, +1 = next week
-export function getWeekDays(timeZone = DEFAULT_TZ, weekOffset = 0): WeekDay[] {
-  const now = new Date();
-  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone }).format(now);
+export function getWeekDays(timeZone = DEFAULT_TZ, weekOffset = 0, baseDate = new Date()): WeekDay[] {
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone }).format(baseDate);
 
   const days: WeekDay[] = [];
   const centerOffset = weekOffset * 7; // shift center day by N weeks
   for (let offset = -3; offset <= 3; offset++) {
-    const d = new Date(now);
+    const d = new Date(baseDate);
     d.setDate(d.getDate() + centerOffset + offset);
     const dayShort = new Intl.DateTimeFormat("id-ID", { timeZone, weekday: "short" }).format(d);
     const dayNum = Number(new Intl.DateTimeFormat("en-CA", { timeZone, day: "numeric" }).format(d));
@@ -92,9 +92,8 @@ export function formatMonthYear(date: Date, timeZone = DEFAULT_TZ): string {
 }
 
 /** Returns the weekOffset needed so that WeekStrip centers near the given YYYY-MM-DD date */
-export function getWeekOffsetForDate(dateStr: string): number {
-  const now = new Date();
+export function getWeekOffsetForDate(dateStr: string, baseDate = new Date()): number {
   const target = new Date(dateStr + "T12:00:00");
-  const diffDays = Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const diffDays = Math.round((target.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24));
   return Math.round(diffDays / 7);
 }

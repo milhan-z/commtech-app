@@ -10,20 +10,22 @@ interface WeekStripProps {
   selectedDate?: string;
   /** Auto-navigate the strip to this date's week (e.g. first event date from API) */
   centerDate?: string;
+  /** Date used as "today", useful for ?now= testing */
+  referenceDate?: Date;
   onSelect?: (date: string) => void;
 }
 
-export function WeekStrip({ selectedDate, centerDate, onSelect }: WeekStripProps) {
+export function WeekStrip({ selectedDate, centerDate, referenceDate, onSelect }: WeekStripProps) {
   const [weekOffset, setWeekOffset] = useState(0);
 
   // Auto-navigate to the week containing centerDate when it first arrives
   useEffect(() => {
     if (centerDate) {
-      setWeekOffset(getWeekOffsetForDate(centerDate));
+      setWeekOffset(getWeekOffsetForDate(centerDate, referenceDate));
     }
-  }, [centerDate]);
+  }, [centerDate, referenceDate]);
 
-  const days = getWeekDays(undefined, weekOffset);
+  const days = getWeekDays(undefined, weekOffset, referenceDate);
   const centerDay = days[3];
   const monthLabel = formatMonthYear(centerDay.date);
 

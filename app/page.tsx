@@ -71,26 +71,34 @@ export default function HomePage() {
   const [expandedToday, setExpandedToday] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
 
-  const todayStr = typeof window !== "undefined"
-    ? new Date().toLocaleDateString("en-CA")
-    : undefined;
-
   const nowParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("now") : null;
   const now = getNowFromParam(nowParam);
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(now);
 
   async function loadData(isRefresh = false) {
     isRefresh ? setRefreshing(true) : setLoading(true);
-    const query = typeof window !== "undefined" ? window.location.search : "";
-    const response = await fetch(`/api/rundown${query}`, { cache: "no-store" });
-    const data = (await response.json()) as RundownPayload;
-    setPayload(data);
-    // Auto-select the current/first event date so filter is immediately in sync
-    if (!selectedDate) {
-      const autoDate = data.current?.date || data.events[0]?.date;
-      if (autoDate) setSelectedDate(autoDate);
+    try {
+      const query = typeof window !== "undefined" ? window.location.search : "";
+      const response = await fetch(`/api/rundown${query}`, { cache: "no-store" });
+      if (!response.ok) throw new Error(`Rundown API returned ${response.status}`);
+      const data = (await response.json()) as RundownPayload;
+      setPayload(data);
+      if (!selectedDate) {
+        const autoDate = data.current?.date || data.events[0]?.date;
+        if (autoDate) setSelectedDate(autoDate);
+      }
+    } catch (error) {
+      console.error(error);
+      setPayload({
+        events: [],
+        allNames: [],
+        source: "mock",
+        refreshedAt: new Date().toISOString()
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    setLoading(false);
-    setRefreshing(false);
   }
 
   useEffect(() => {
@@ -100,7 +108,7 @@ export default function HomePage() {
 
   const current = payload?.current;
   const status: EventStatus = current ? compareEventToNow(current.date, current.startTime, current.endTime, now) : "done";
-  // The first event date — used to auto-center WeekStrip
+  // The first event date is used to auto-center WeekStrip.
   const firstEventDate = current?.date || payload?.events[0]?.date;
   // Active date drives the filter: explicit selection wins, else first event date
   const activeDate = selectedDate || firstEventDate;
@@ -120,10 +128,11 @@ export default function HomePage() {
     : "Hari ini";
 
   return (
-    <AppShell title={pageTitle} onRefresh={() => loadData(true)} refreshing={refreshing}>
+    <AppShell title={pageTitle} onRefresh={() => loadData(true)} refreshing={refreshing} date={now}>
       <WeekStrip
         selectedDate={selectedDate}
         centerDate={firstEventDate}
+        referenceDate={now}
         onSelect={setSelectedDate}
       />
       {loading ? (

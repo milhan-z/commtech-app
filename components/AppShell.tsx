@@ -11,7 +11,8 @@ export function AppShell({
   eyebrow = "CommTECH Insight 2026",
   onRefresh,
   refreshing,
-  rightAction
+  rightAction,
+  date
 }: {
   children: React.ReactNode;
   title?: string;
@@ -19,6 +20,7 @@ export function AppShell({
   onRefresh?: () => void;
   refreshing?: boolean;
   rightAction?: React.ReactNode;
+  date?: Date;
 }) {
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-32 pt-7">
@@ -30,7 +32,7 @@ export function AppShell({
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted">{eyebrow}</p>
             <div className="mt-1 inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold text-ink shadow-sm">
-              {formatDatePill()}
+              {formatDatePill(date)}
             </div>
           </div>
         </div>

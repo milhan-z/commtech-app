@@ -1,7 +1,7 @@
 {
   "framework": "nextjs",
   "env": {
-    "GOOGLE_SHEET_ID": "1b_5LQxsGMChR5nLI7h2AoaR0hKvLX3DBLxHcTJk7zhY",
+    "GOOGLE_SHEET_ID": "134GMyDtzU9aLApV518HYdSM9ctOD-IJAAF47_751vLI",
     "APP_TIMEZONE": "Asia/Jakarta"
   }
 }

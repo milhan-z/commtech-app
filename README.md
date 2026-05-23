@@ -41,7 +41,7 @@ NEXT_PUBLIC_WHATSAPP_URL=
 Sheet production yang dipakai:
 
 ```txt
-GOOGLE_SHEET_ID=1b_5LQxsGMChR5nLI7h2AoaR0hKvLX3DBLxHcTJk7zhY
+GOOGLE_SHEET_ID=134GMyDtzU9aLApV518HYdSM9ctOD-IJAAF47_751vLI
 ```
 
 ## Google Service Account
@@ -89,6 +89,14 @@ Untuk testing waktu saat ini:
 ```txt
 /?now=2026-02-09T10:15:00+07:00
 ```
+
+Template workbook siap pakai ada di:
+
+```txt
+templates/CommTECH_Insight_2026_Sheet_Template.xlsx
+```
+
+Upload file itu ke Google Drive, buka sebagai Google Sheets, lalu copy `spreadsheetId` dari URL ke `GOOGLE_SHEET_ID`.
 
 ## Checklist
 
