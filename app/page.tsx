@@ -26,6 +26,15 @@ function includesPerson(event: RundownEvent, name: string) {
   return haystack.includes(name.toLowerCase());
 }
 
+function pickFocusEvent(events: RundownEvent[], now: Date) {
+  if (!events.length) return undefined;
+  return (
+    events.find((event) => compareEventToNow(event.date, event.startTime, event.endTime, now) === "live") ||
+    events.find((event) => compareEventToNow(event.date, event.startTime, event.endTime, now) === "upcoming") ||
+    events[0]
+  );
+}
+
 function AgendaDetail({ event }: { event: RundownEvent }) {
   return (
     <div className="space-y-4">
@@ -106,26 +115,36 @@ export default function HomePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const current = payload?.current;
-  const status: EventStatus = current ? compareEventToNow(current.date, current.startTime, current.endTime, now) : "done";
-  // The first event date is used to auto-center WeekStrip.
-  const firstEventDate = current?.date || payload?.events[0]?.date;
-  // Active date drives the filter: explicit selection wins, else first event date
+  const firstEventDate = payload?.current?.date || payload?.events[0]?.date;
   const activeDate = selectedDate || firstEventDate;
-  const todayEvents = useMemo(() => {
-    const list = (payload?.events || []).filter((event) => event.date === activeDate);
-    if (filter === "Tugasku") return list.filter((event) => includesPerson(event, selectedName));
-    if (filter === "Lokasi") return list.filter((event) => event.location);
-    if (filter === "PIC") return list.filter((event) => event.pic);
-    return list;
-  }, [payload, activeDate, filter, selectedName]);
 
-  const activeChild = current?.children.find((child) => compareEventToNow(child.date, child.startTime, child.endTime, now) === "live");
-  const visibleEvents = expandedToday ? todayEvents : todayEvents.slice(0, 5);
+  const dayEvents = useMemo(() => {
+    return (payload?.events || []).filter((event) => event.date === activeDate);
+  }, [payload, activeDate]);
+
+  const filteredEvents = useMemo(() => {
+    if (filter === "Tugasku") return dayEvents.filter((event) => includesPerson(event, selectedName));
+    if (filter === "Lokasi") return dayEvents.filter((event) => event.location);
+    if (filter === "PIC") return dayEvents.filter((event) => event.pic);
+    return dayEvents;
+  }, [dayEvents, filter, selectedName]);
+
+  const focusEvent = pickFocusEvent(dayEvents, now);
+  const status: EventStatus = focusEvent ? compareEventToNow(focusEvent.date, focusEvent.startTime, focusEvent.endTime, now) : "done";
+  const activeChild = focusEvent?.children.find((child) => compareEventToNow(child.date, child.startTime, child.endTime, now) === "live");
+  const visibleEvents = expandedToday ? filteredEvents : filteredEvents.slice(0, 5);
+  const focusIndex = focusEvent ? dayEvents.findIndex((event) => event.id === focusEvent.id) : -1;
+  const previousEvent = focusIndex > 0 ? dayEvents[focusIndex - 1] : undefined;
+  const nextEvent = focusIndex >= 0 && focusIndex < dayEvents.length - 1 ? dayEvents[focusIndex + 1] : undefined;
 
   const pageTitle = activeDate && activeDate !== todayStr
     ? new Date(activeDate + "T00:00:00").toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })
     : "Hari ini";
+
+  function selectDate(date?: string) {
+    setSelectedDate(date);
+    setExpandedToday(false);
+  }
 
   return (
     <AppShell title={pageTitle} onRefresh={() => loadData(true)} refreshing={refreshing} date={now}>
@@ -133,44 +152,49 @@ export default function HomePage() {
         selectedDate={selectedDate}
         centerDate={firstEventDate}
         referenceDate={now}
-        onSelect={setSelectedDate}
+        onSelect={selectDate}
       />
       {loading ? (
         <div className="space-y-4">
           <div className="h-72 animate-pulse rounded-[2.5rem] bg-white/70" />
           <div className="h-24 animate-pulse rounded-[2rem] bg-white/70" />
         </div>
-      ) : !current ? (
-        <OrganicCard className="p-8 text-center">
-          <h2 className="font-serif text-4xl">Hari ini selesai</h2>
-          <p className="mt-3 text-muted">Belum ada agenda yang bisa ditampilkan dari sumber data.</p>
-        </OrganicCard>
+      ) : !focusEvent ? (
+        <div className="space-y-4">
+          <OrganicCard className="p-8 text-center">
+            <h2 className="font-serif text-4xl">Tidak ada agenda</h2>
+            <p className="mt-3 text-muted">Belum ada agenda untuk tanggal yang dipilih.</p>
+          </OrganicCard>
+          {payload?.source === "mock" ? (
+            <p className="text-center text-sm font-bold text-muted">Sumber data masih mock.</p>
+          ) : null}
+        </div>
       ) : (
         <div className="space-y-7">
           <OrganicCard className="rounded-blob px-6 py-8">
             <div className="mb-6 flex items-center justify-between gap-3">
-              <span className="rounded-full bg-ink px-4 py-2 text-sm font-black text-white">{timeRange(current)}</span>
+              <span className="rounded-full bg-ink px-4 py-2 text-sm font-black text-white">{timeRange(focusEvent)}</span>
               <StatusBadge status={status} />
             </div>
-            <h2 className="font-serif text-5xl leading-[0.95]">{current.agenda}</h2>
+            <h2 className="font-serif text-5xl leading-[0.95]">{focusEvent.agenda}</h2>
             <div className="mt-6 space-y-2 text-muted">
-              {current.location ? (
+              {focusEvent.location ? (
                 <p className="flex items-center gap-2">
                   <MapPin className="h-5 w-5" />
-                  {current.location}
+                  {focusEvent.location}
                 </p>
               ) : null}
-              {current.pic ? (
+              {focusEvent.pic ? (
                 <p className="flex items-center gap-2">
                   <UserRound className="h-5 w-5" />
-                  PIC: {current.pic}
+                  PIC: {focusEvent.pic}
                 </p>
               ) : null}
-              {current.speaker ? <p>Speaker: {current.speaker}</p> : null}
+              {focusEvent.speaker ? <p>Speaker: {focusEvent.speaker}</p> : null}
             </div>
             <button
               type="button"
-              onClick={() => setSelected(current)}
+              onClick={() => setSelected(focusEvent)}
               className="mt-7 inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-sm font-black text-white"
             >
               Detail lengkap
@@ -180,26 +204,26 @@ export default function HomePage() {
 
           <section>
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-xl font-black">Job saat ini</h2>
+              <h2 className="text-xl font-black">{activeDate === todayStr ? "Job saat ini" : "Job agenda ini"}</h2>
               {payload?.source === "mock" ? <span className="rounded-full bg-accent/30 px-3 py-1 text-xs font-bold">Mock</span> : null}
             </div>
             <div className="space-y-3">
-              {(activeChild?.jobs.length ? activeChild.jobs : current.jobs).map((job) => (
+              {(activeChild?.jobs.length ? activeChild.jobs : focusEvent.jobs).map((job) => (
                 <JobCard key={job.id} job={job} active={activeChild?.jobs.some((item) => item.id === job.id)} />
               ))}
             </div>
           </section>
 
           <div className="grid grid-cols-1 gap-3">
-            {payload?.previous ? (
-              <TimelineCard event={payload.previous} compact onClick={() => setSelected(payload.previous!)} />
+            {previousEvent ? (
+              <TimelineCard event={previousEvent} compact onClick={() => setSelected(previousEvent)} />
             ) : null}
-            {payload?.next ? <TimelineCard event={payload.next} compact onClick={() => setSelected(payload.next!)} /> : null}
+            {nextEvent ? <TimelineCard event={nextEvent} compact onClick={() => setSelected(nextEvent)} /> : null}
           </div>
 
           <section className="space-y-4">
             <div>
-              <h2 className="text-xl font-black">Rundown hari ini</h2>
+              <h2 className="text-xl font-black">{activeDate === todayStr ? "Rundown hari ini" : "Rundown tanggal ini"}</h2>
               <p className="mt-1 text-sm text-muted">Tap kartu untuk melihat detail tugas dan resource.</p>
             </div>
             <SegmentedTabs value={filter} options={["Semua", "Tugasku", "Lokasi", "PIC"]} onChange={setFilter} />
@@ -222,13 +246,13 @@ export default function HomePage() {
                 <TimelineCard key={event.id} event={event} onClick={() => setSelected(event)} />
               ))}
             </div>
-            {todayEvents.length > 5 ? (
+            {filteredEvents.length > 5 ? (
               <button
                 type="button"
                 onClick={() => setExpandedToday((value) => !value)}
                 className="mx-auto flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-sm font-black text-white"
               >
-                {expandedToday ? "Ringkas" : "Lihat rundown lengkap hari ini"}
+                {expandedToday ? "Ringkas" : "Lihat rundown lengkap tanggal ini"}
                 <ChevronDown className="h-4 w-4" />
               </button>
             ) : null}
